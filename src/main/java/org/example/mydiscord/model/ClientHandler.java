@@ -30,17 +30,20 @@ public class ClientHandler implements Runnable {
 
             System.out.println("Abren el parlante del equipo");
             speaker.open(format);
+            speaker.start();
 
             System.out.println("Conexion con el socket para extraer la información que envia el cliente");
             InputStream io = socket.getInputStream();
             BufferedInputStream bis = new BufferedInputStream(io);
 
             System.out.println("Decodificando la información y enviando al parlante");
-            byte[] buffer = new byte[10240];
+            byte[] buffer = new byte[1024];
 
             while (true){
 
                 int byteRead = bis.read(buffer, 0, buffer.length);
+
+                //Thread.sleep(10);
 
                 speaker.write(buffer, 0, byteRead);
                 if(byteRead == -1){
@@ -57,5 +60,8 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        //catch (InterruptedException e) {
+        //    throw new RuntimeException(e);
+        //}
     }
 }

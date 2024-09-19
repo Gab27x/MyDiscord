@@ -33,7 +33,7 @@ public class ClientTCPMyDiscord {
             BufferedOutputStream bos = new BufferedOutputStream(os);
 
             // Codificar el audio en bytes
-            byte[] buffer = new byte[10240];
+            byte[] buffer = new byte[1024];
             while (true){
                 int byteRead = microphone.read(buffer, 0, buffer.length);
 
