@@ -1,9 +1,13 @@
+package client;
 
 import javax.sound.sampled.*;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import model.Group;
+
 
 public class ClientTCPMyDiscord {
     public static void main(String[] args) {
