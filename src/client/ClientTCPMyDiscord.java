@@ -1,4 +1,3 @@
-package org.example.mydiscord.model;
 
 import javax.sound.sampled.*;
 import java.io.BufferedOutputStream;
