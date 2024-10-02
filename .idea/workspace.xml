@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="52c92218-f218-4448-b7ad-59238e7fb85f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/client/ClientTCPMyDiscord.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/ClientTCPMyDiscord.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/server/ServerTCPMyDiscord.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/server/ServerTCPMyDiscord.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,6 +32,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "master",
     "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/home/gab27x/Documents/5 Semestre/compuNet1/Computacion1/AppIce",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -61,6 +60,8 @@
       <updated>1727696565601</updated>
       <workItem from="1727696571081" duration="156000" />
       <workItem from="1727696823920" duration="1306000" />
+      <workItem from="1727698143807" duration="649000" />
+      <workItem from="1727792563020" duration="47000" />
     </task>
     <servers />
   </component>
