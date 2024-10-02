@@ -56,14 +56,9 @@ public class ServerTCPMyDiscord {
 
         // Cargar los clientes
         loadClients();
-
         // Cargar los grupos
         loadGroups();
-
         getAllClientsGroups();
-
-
-
 
     }
 
