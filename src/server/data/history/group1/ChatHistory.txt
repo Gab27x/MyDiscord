@@ -1,2 +1,0 @@
-[2024-10-01 10:15:30] Usuario1: Hola, ¿cómo están?
-[2024-10-01 10:16:45] Usuario2: Todo bien, gracias.

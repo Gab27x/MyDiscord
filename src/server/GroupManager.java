@@ -1,0 +1,80 @@
+package server;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.io.IOException;
+
+public class GroupManager {
+
+    // Un mapa que asocia el nombre del grupo con los usuarios dentro del grupo
+    private Map<String, Set<ClientHandler>> groups;
+    private FileManager fileManager;
+
+
+    public GroupManager() {
+        groups = new HashMap<>();
+        fileManager = FileManager.getInstance();  // Obtener instancia del FileManager
+    }
+
+    // Crear un nuevo grupo
+    public synchronized boolean createGroup(String groupName) {
+        if (!groups.containsKey(groupName)) {
+            groups.put(groupName, new HashSet<>());
+            fileManager.createGroupDirectories(groupName);  // Crear las carpetas para el grupo
+            return true;
+        }
+        return false;
+    }
+
+    // Añadir un usuario a un grupo
+    public synchronized boolean addUserToGroup(String groupName, ClientHandler client) {
+        Set<ClientHandler> group = groups.get(groupName);
+        if (group != null) {
+            group.add(client);
+            try {
+                // Enviar el historial del chat al cliente cuando se une
+                String history = fileManager.readChatHistory(groupName);
+                client.sendMessage("Historial del chat para '" + groupName + "':\n" + history);
+            } catch (IOException e) {
+                client.sendMessage("Error al cargar el historial del grupo.");
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // Enviar un mensaje a todos los miembros del grupo y guardarlo en el historial
+    public synchronized void broadcastToGroup(String groupName, String message, ClientHandler sender) {
+        Set<ClientHandler> group = groups.get(groupName);
+        if (group != null) {
+            try {
+                fileManager.writeChatMessage(groupName, message);  // Guardar el mensaje en el historial
+            } catch (IOException e) {
+                sender.sendMessage("Error al guardar el mensaje en el historial.");
+            }
+
+            for (ClientHandler client : group) {
+                if (client != sender) {
+                    client.sendMessage(message);
+                }
+            }
+        }
+    }
+
+    // Guardar un archivo de audio en el historial del grupo
+    public synchronized void saveAudioFile(String groupName, String audioFileName, byte[] audioData) {
+        try {
+            fileManager.saveAudioFile(groupName, audioFileName, audioData);
+
+            // Registrar el archivo de audio en el historial de mensajes del grupo
+            String audioReference = "Nota de voz enviada: " + audioFileName;
+            fileManager.writeChatMessage(groupName, audioReference);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+}
