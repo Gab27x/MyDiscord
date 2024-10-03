@@ -8,21 +8,22 @@ import java.io.IOException;
 
 public class GroupManager {
 
-    // Un mapa que asocia el nombre del grupo con los usuarios dentro del grupo
+    // asocia el nombre del grupo con los usuarios dentro del grupo
     private Map<String, Set<ClientHandler>> groups;
+
     private FileManager fileManager;
 
 
     public GroupManager() {
         groups = new HashMap<>();
-        fileManager = FileManager.getInstance();  // Obtener instancia del FileManager
+        fileManager = FileManager.getInstance();  
     }
 
     // Crear un nuevo grupo
     public synchronized boolean createGroup(String groupName) {
         if (!groups.containsKey(groupName)) {
             groups.put(groupName, new HashSet<>());
-            fileManager.createGroupDirectories(groupName);  // Crear las carpetas para el grupo
+            fileManager.createGroupDirectories(groupName);  // carpets para el grupo
             return true;
         }
         return false;

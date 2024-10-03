@@ -1,0 +1,2 @@
+[u] user2: hola
+[u] user1: hola c�mo tas?

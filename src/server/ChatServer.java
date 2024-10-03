@@ -12,7 +12,7 @@ public class ChatServer {
     private GroupManager groupManager;
 
     public ChatServer() {
-        groupManager = new GroupManager();  // Inicializar el gestor de grupos
+        groupManager = new GroupManager();  
     }
     public static void main(String[] args) {
         new ChatServer().startServer();
@@ -23,15 +23,14 @@ public class ChatServer {
             System.out.println("Servidor de chat iniciado en el puerto " + PORT);
 
             while (true) {
-                // Acepta una nueva conexión
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Nuevo cliente conectado");
 
-                // Crea un nuevo manejador para este cliente y lo agrega a la lista
+                // hay un manejador para cada cliente y lo agrega a la lista
                 ClientHandler clientHandler = new ClientHandler(clientSocket, this);
                 clients.add(clientHandler);
 
-                // Inicia un nuevo hilo para manejar la conexión del cliente
+                // Un hilo pra manejar cada cliente
                 new Thread(clientHandler).start();
             }
         } catch (IOException e) {
@@ -39,7 +38,7 @@ public class ChatServer {
         }
     }
 
-    // Envía un mensaje a todos los clientes conectados
+    // Mensajes del servidor a todos los clientes
     public synchronized void broadcastMessage(String message, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
@@ -48,7 +47,22 @@ public class ChatServer {
         }
     }
 
-    // Elimina un cliente de la lista
+    // Enviar mensaje privados
+    public synchronized void sendPrivateMessage(String senderUsername, String targetUsername, String message) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername() != null && client.getUsername().equals(targetUsername)) {
+                client.sendMessage("Mensaje privado de " + senderUsername + ": " + message);
+                return;
+            }
+        }
+        // Validacipon si el usuario no está conectado
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(senderUsername)) {
+                client.sendMessage("Usuario '" + targetUsername + "' no está disponible.");
+            }
+        }
+    }
+
     public synchronized void removeClient(ClientHandler client) {
         clients.remove(client);
     }
@@ -62,14 +76,15 @@ class ClientHandler implements Runnable {
     private Socket clientSocket;
     private ChatServer server;
     private PrintWriter out;
+    private String username;  
 
-    private String currentGroup;  // El grupo al que el cliente está actualmente unido
+    private String currentGroup; 
 
 
     public ClientHandler(Socket socket, ChatServer server) {
         this.clientSocket = socket;
         this.server = server;
-        this.currentGroup = null;  // Inicialmente, el cliente no está en ningún grupo
+        this.currentGroup = null;
     }
 
     @Override
@@ -79,7 +94,16 @@ class ClientHandler implements Runnable {
 
             String message;
             while ((message = in.readLine()) != null) {
-                if (message.startsWith("/create ")) {
+                if (message.startsWith("/username ")) {
+                    this.username = message.split(" ", 2)[1];
+                    sendMessage("Tu nombre de usuario es: " + this.username);
+                } else if (message.startsWith("/msg ")) {
+                    // Enviar mensaje a un usuario específico
+                    String[] splitMessage = message.split(" ", 3);
+                    String targetUsername = splitMessage[1];
+                    String privateMessage = splitMessage[2];
+                    server.sendPrivateMessage(this.username, targetUsername, privateMessage);
+                } else if (message.startsWith("/create ")) {
                     String groupName = message.split(" ", 2)[1];
                     if (server.getGroupManager().createGroup(groupName)) {
                         sendMessage("Grupo '" + groupName + "' creado exitosamente.");
@@ -94,22 +118,26 @@ class ClientHandler implements Runnable {
                     } else {
                         sendMessage("El grupo '" + groupName + "' no existe.");
                     }
-                } else if (message.startsWith("/audio ")) {
-                    // Recibir el archivo de audio
-                    DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
-                    String audioFileName = message.split(" ", 2)[1];
-                    int fileLength = dis.readInt();
-                    byte[] audioData = new byte[fileLength];
-                    dis.readFully(audioData);  // Asegúrate de leer solo los binarios correctamente
+                } 
                 
-                    // Guardar el archivo de audio
-                    server.getGroupManager().saveAudioFile(currentGroup, audioFileName, audioData);
+                // else if (message.startsWith("/audio ")) {
+                //     // Recibir el archivo de audio
+                //     DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
+                //     String audioFileName = message.split(" ", 2)[1];
+                //     int fileLength = dis.readInt();
+                //     byte[] audioData = new byte[fileLength];
+                //     dis.readFully(audioData);  // Asegúrate de leer solo los binarios correctamente
                 
-                    // Notificar al grupo que se ha enviado una nota de voz
-                    server.getGroupManager().broadcastToGroup(currentGroup, "Nota de voz enviada: " + audioFileName, this);
-                }
+                //     // Guardar el archivo de audio
+                //     server.getGroupManager().saveAudioFile(currentGroup, audioFileName, audioData);
+                
+                //     // Notificar al grupo que se ha enviado una nota de voz
+                //     server.getGroupManager().broadcastToGroup(currentGroup, "Nota de voz enviada: " + audioFileName, this);
+                // }
+
+
                  else if (currentGroup != null) {
-                    String formattedMessage = "[" + currentGroup + "] " + message;
+                    String formattedMessage = "[" + currentGroup + "] " + this.username + ": " + message;
                     server.getGroupManager().broadcastToGroup(currentGroup, formattedMessage, this);
                 } else {
                     sendMessage("Debes unirte a un grupo primero.");
@@ -129,5 +157,9 @@ class ClientHandler implements Runnable {
 
     public void sendMessage(String message) {
         out.println(message);
+    }
+
+    public String getUsername() {
+        return username;
     }
 }

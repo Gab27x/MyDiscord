@@ -20,9 +20,13 @@ public class ChatClient {
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            System.out.println("Conectado al servidor de chat");
+            System.out.print("Ingresa tu nombre de usuario: ");
+            String username = consoleInput.readLine();
+            out.println("/username " + username);  // eenvio nombre de usuario al servidor
 
-            // Hilo para leer los mensajes del servidor
+            System.out.println("Conectado al servidor de chat como " + username);
+
+            // el hilo para leer los mensajes del servidor
             new Thread(() -> {
                 try {
                     String message;
@@ -34,18 +38,29 @@ public class ChatClient {
                 }
             }).start();
 
-            // Enviar mensajes o notas de voz
+            // envio de mensajes a usuarios o grupos
             String userInput;
             while ((userInput = consoleInput.readLine()) != null) {
-                if (userInput.equals("/voice")) {
-                    // Grabar una nota de voz y enviarla
-                    String audioFileName = "nota_de_voz.wav";
-                    recordVoice(audioFileName);
-                    sendAudio(socket, audioFileName);
+                if (userInput.startsWith("/msg ")) {
+                    // Enviar mensaje a un usuario específico
+                    out.println(userInput);  // formato /msg username mensaje
                 } else {
-                    out.println(userInput);
+                    out.println(userInput);  // enviar mensaje al grupo
                 }
             }
+
+            // // Enviar mensajes con notas de voz (está bugueado)
+            // String userInput;
+            // while ((userInput = consoleInput.readLine()) != null) {
+            //     if (userInput.equals("/voice")) {
+            //         // Grabar una nota de voz y enviarla
+            //         String audioFileName = "nota_de_voz.wav";
+            //         recordVoice(audioFileName);
+            //         sendAudio(socket, audioFileName);
+            //     } else {
+            //         out.println(userInput);
+            //     }
+            // }
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -69,7 +84,7 @@ public class ChatClient {
             // Crear un nuevo hilo para detener la grabación después de 10 segundos
             new Thread(() -> {
                 try {
-                    Thread.sleep(10000);  // Grabar por 10 segundos
+                    Thread.sleep(10000);  // los 10 segundos
                     microphone.stop();
                     microphone.close();
                     System.out.println("Grabación completada.");
@@ -78,7 +93,7 @@ public class ChatClient {
                 }
             }).start();
     
-            // Guardar el archivo de audio
+            // guardar el archivo de audio
             AudioSystem.write(audioStream, AudioFileFormat.Type.WAVE, audioFile);
     
         } catch (Exception e) {
@@ -87,13 +102,13 @@ public class ChatClient {
     }
     
 
-    // Método para enviar un archivo de audio al servidor
+    // enviar un archivo de audio al servidor
     private void sendAudio(Socket socket, String fileName) {
         try {
             File audioFile = new File(fileName);
             byte[] audioData = Files.readAllBytes(audioFile.toPath());
 
-            // Enviar el archivo al servidor
+            // enviar el archivo al servidor
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
             dos.writeUTF("/audio " + audioFile.getName());  // Comando para el servidor
             dos.writeInt(audioData.length);
