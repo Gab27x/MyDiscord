@@ -78,4 +78,10 @@ public class GroupManager {
         }
     }
 
+    //el synchronized indica que la funcion solo puede ser ejecutada por un hilo a la vez (el hilo que esta manejando esa llamada)
+    //permite obtener la lista de los nombres de los miembros del grupo, para luego notificarlos de una llamada
+    public synchronized Set<ClientHandler> getGroupMembers(String groupName) {
+        return groups.getOrDefault(groupName, new HashSet<>());  // Devuelve el conjunto de miembros del grupo o un conjunto vacío si no existe
+    }
+
 }
