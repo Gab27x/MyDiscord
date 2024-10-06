@@ -1,17 +1,13 @@
 package server;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.io.*;
 import java.util.Set;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.Calendar;
+import java.net.Socket;
 import java.nio.file.Files;
+
+import java.util.Arrays;
+import javax.sound.sampled.*;
 
 public class ClientHandler implements Runnable {
 
@@ -61,6 +57,9 @@ public class ClientHandler implements Runnable {
 
                 else if (message.startsWith("/call"))
                     callCommand(message);
+
+                else if (message.startsWith("/endcall "))
+                    endCallCommand(message);
 
                 else if (message.startsWith("/history "))
                     historyCommand(message);
@@ -197,7 +196,14 @@ public class ClientHandler implements Runnable {
 
     public void callCommand(String message) {
         String groupName = message.split(" ", 2)[1];
-        notifyIncomingCall(this.username, groupName);
+        
+        callManager.startCall(groupName, this);        
+        startSendingAudio(groupName);
+    }
+
+    public void endCallCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        callManager.endCall(groupName, this);
     }
 
     public void historyCommand(String message) {
@@ -221,6 +227,40 @@ public class ClientHandler implements Runnable {
 
     public String getUsername() {
         return username;
+    }
+
+    // Método para manejar el envío continuo de audio
+    public void startSendingAudio(String groupName) {
+        // Crea un nuevo hilo para enviar los datos de audio en tiempo real
+        new Thread(() -> {
+            try {
+                AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+                TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+                microphone.open(format);
+                microphone.start();
+
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+
+                // Mientras el usuario esté en la llamada
+                while (callManager.isInCall(groupName, this)) {
+                    // Leer el audio desde el micrófono
+                    bytesRead = microphone.read(buffer, 0, buffer.length);
+
+                    // Enviar los datos de audio al CallManager
+                    if (bytesRead > 0) {
+                        callManager.handleCallData(groupName, Arrays.copyOf(buffer, bytesRead), this);
+                    }
+                }
+
+                microphone.stop();
+                microphone.close();
+            } catch (LineUnavailableException e) {
+                sendMessage("[SERVER]: Error en la transmisión de audio.");
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     // Método para notificar a los participantes sobre una llamada entrante

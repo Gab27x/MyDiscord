@@ -80,7 +80,12 @@ public class ChatClient {
                 }else if(userInput.startsWith("/listen ")){
                     out.println(userInput);
                     receiveAndPlayAudio(socket);
-                }else {
+                }else if (userInput.startsWith("/call ")) {
+                    out.println(userInput);
+                    startSendingAudio(socket, userInput.split(" ", 2)[1]);
+                    receiveAudioInCall(socket);
+                }
+                else {
                     out.println(userInput); // Enviar otros comandos
                 }
             }
@@ -172,6 +177,69 @@ public class ChatClient {
         } catch (IOException | LineUnavailableException e) {
             e.printStackTrace();
         }
+    }
+
+    // Método para capturar y enviar audio en tiempo real
+    private void startSendingAudio(Socket socket, String groupName) {
+        new Thread(() -> {
+            try {
+                AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+                TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+                microphone.open(format);
+                microphone.start();
+
+                byte[] buffer = new byte[4096]; // Buffer para capturar los datos de audio
+                int bytesRead;
+
+                // Enviar audio al servidor mientras el usuario esté en la llamada
+                while (true) {
+                    bytesRead = microphone.read(buffer, 0, buffer.length);
+                    if (bytesRead > 0) {
+                        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                        dos.writeUTF("/audio " + groupName);  // Indicar al servidor que se está enviando audio
+                        dos.writeInt(bytesRead);  // Enviar la cantidad de bytes leídos
+                        dos.write(buffer, 0, bytesRead);  // Enviar el audio capturado
+                        dos.flush();  // Asegurarse de que los datos se envían de inmediato
+                    }
+                }
+            } catch (LineUnavailableException | IOException e) {
+                System.out.println("Error en la transmisión de audio: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    // Método para recibir y reproducir audio en tiempo real
+    private void receiveAudioInCall(Socket socket) {
+        new Thread(() -> {
+            try {
+                DataInputStream dis = new DataInputStream(socket.getInputStream());
+
+                AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
+                SourceDataLine speakers = AudioSystem.getSourceDataLine(format);
+                speakers.open(format);
+                speakers.start();
+
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+
+                // Bucle para recibir y reproducir audio mientras la llamada esté activa
+                while (true) {
+                    // Leer el tamaño del paquete de audio
+                    bytesRead = dis.readInt();
+
+                    // Leer el audio desde el servidor
+                    dis.readFully(buffer, 0, bytesRead);
+
+                    // Reproducir el audio
+                    speakers.write(buffer, 0, bytesRead);
+                }
+            } catch (IOException | LineUnavailableException e) {
+                System.out.println("Error en la recepción de audio: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
     }
 
 }
