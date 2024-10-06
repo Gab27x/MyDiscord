@@ -2,10 +2,16 @@ package server;
 
 import java.io.*;
 import java.nio.file.*;
+import com.google.gson.Gson;
+
 
 public class FileManager {
 
-    private static FileManager instance = null;
+
+    private Gson gson = new Gson();
+
+
+    /*private static FileManager instance = null;
 
     private final String dataDirectory = "data/";
     private final String gruposDirectory = dataDirectory + "grupos/";
@@ -70,5 +76,5 @@ public class FileManager {
         String filePath = historialDirectory + groupName + "/audio/" + audioFileName;
         return Files.readAllBytes(Paths.get(filePath));
     }
-
+*/
 }
