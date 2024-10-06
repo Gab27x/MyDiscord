@@ -142,6 +142,9 @@ public class ClientHandler implements Runnable {
         String groupName = message.split(" ", 2)[1];
         if (server.getGroupManager().createGroup(groupName)) {
             sendMessage("[SERVER]: Grupo '" + groupName + "' creado exitosamente.");
+            // Unirse automáticamente al grupo recién creado
+            joinCommand("/join " + groupName);
+
         } else {
             sendMessage("[SERVER]: El grupo '" + groupName + "' ya existe.");
         }
