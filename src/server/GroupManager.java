@@ -84,4 +84,13 @@ public class GroupManager {
         return groups.getOrDefault(groupName, new HashSet<>());  // Devuelve el conjunto de miembros del grupo o un conjunto vacío si no existe
     }
 
+    // Obtener historial de chat de un grupo
+    public synchronized String getChatHistory(String groupName) {
+        try {
+            return fileManager.readChatHistory(groupName);
+        } catch (IOException e) {
+            return "Error al cargar el historial del grupo.";
+        }
+    }
+
 }

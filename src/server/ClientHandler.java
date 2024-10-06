@@ -11,6 +11,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Calendar;
+import java.nio.file.Files;
 
 public class ClientHandler implements Runnable {
 
@@ -45,8 +46,12 @@ public class ClientHandler implements Runnable {
                 else if (message.startsWith("/msg "))
                     msgCommand(message);
 
-                else if (message.startsWith("/audio ")){
-                    receiveAudio(message);}
+                else if (message.startsWith("/audio ")) {
+                    receiveAudio(message);
+                }
+
+                else if (message.startsWith("/listen "))
+                    listenCommand(message);
 
                 else if (message.startsWith("/create "))
                     createCommand(message);
@@ -56,6 +61,9 @@ public class ClientHandler implements Runnable {
 
                 else if (message.startsWith("/call"))
                     callCommand(message);
+
+                else if (message.startsWith("/history "))
+                    historyCommand(message);
 
                 else {
                     sendMessage("Comando no válido.");
@@ -98,14 +106,14 @@ public class ClientHandler implements Runnable {
     public void receiveAudio(String message) { // TODO: Se sigue guardando el audio asi no pertenezca al grupo
         String[] splitMessage = message.split(" ", 3);
         String targetChat = splitMessage[1];
-        String audioID = "Audio_"+ Calendar.getInstance().getTimeInMillis();
+        String audioID = "Audio" + Calendar.getInstance().getTimeInMillis() + "_" + targetChat;
         boolean belongsToGroup = server.getGroupManager().getGroupMembers(targetChat).contains(this);
 
-        String path = "data/historial/"+targetChat+"/audio/";
+        String path = "data/historial/" + targetChat + "/audio/";
 
         if (belongsToGroup) { // Si target es un grupo al que pertenece
             sendMessage("[SERVER]: Nota de voz enviada al grupo '" + targetChat + "'.");
-            server.getGroupManager().broadcastToGroup(targetChat, this.username + ": "+audioID , this);
+            server.getGroupManager().broadcastToGroup(targetChat, this.username + ": " + audioID, this);
         } else { // Puede ser un usuario o un grupo al que no pertenece
             server.sendPrivateMessage(this.username, targetChat, audioID);
         }
@@ -138,6 +146,34 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    public void listenCommand(String message) {
+        String[] splitMessage = message.split(" ", 2);
+        String audioID = splitMessage[1];
+        String path = "data/historial/" + audioID.split("_")[1] + "/audio/" + audioID + ".wav";
+
+        // Verificar si tiene acceso al chat
+        if (!server.getGroupManager().getGroupMembers(audioID.split("_")[1]).contains(this)) {
+            sendMessage("[SERVER]: No tienes acceso a este chat.");
+            return;
+        }
+
+        File audioFile = new File(path);
+
+        if (!audioFile.exists()) {
+            sendMessage("[SERVER]: El archivo de audio no existe.");
+            return;
+        }
+
+        try {
+            byte[] audioData = Files.readAllBytes(audioFile.toPath());
+            sendAudioData(audioData); // Enviar los datos de audio al cliente
+            sendMessage("[SERVER]: Nota de voz enviada correctamente.");
+        } catch (IOException e) {
+            sendMessage("[SERVER]: Error al enviar la nota de voz.");
+            e.printStackTrace();
+        }
+    }
+
     public void createCommand(String message) {
         String groupName = message.split(" ", 2)[1];
         if (server.getGroupManager().createGroup(groupName)) {
@@ -159,6 +195,19 @@ public class ClientHandler implements Runnable {
     public void callCommand(String message) {
         String groupName = message.split(" ", 2)[1];
         notifyIncomingCall(this.username, groupName);
+    }
+
+    public void historyCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+
+        // Verificar si tiene acceso al chat
+        if (!server.getGroupManager().getGroupMembers(groupName).contains(this)) {
+            sendMessage("[SERVER]: No tienes acceso a este chat.");
+            return;
+        }
+
+        String history = server.getGroupManager().getChatHistory(groupName);
+        sendMessage("-------- Historial del chat - '" + groupName + "'------------\n" + history);
     }
 
     // Utilidades -------------------------------------------------
@@ -184,12 +233,19 @@ public class ClientHandler implements Runnable {
 
     public void sendAudioData(byte[] audioData) {
         try {
-            // Primero enviamos la longitud del paquete de audio
+            if (audioData.length == 0) {
+                sendMessage("[SERVER]: El archivo de audio está vacío.");
+                return;
+            }
+
+            // Enviar la longitud del archivo de audio
             dataOut.writeInt(audioData.length);
-            // Luego enviamos los bytes de audio
+            // Enviar los datos de audio
             dataOut.write(audioData);
-            dataOut.flush();  // Asegurarnos de que los datos se envían de inmediato
+            dataOut.flush(); // Asegurarse de que los datos se envían de inmediato
+
         } catch (IOException e) {
+            sendMessage("[SERVER]: Error al enviar la nota de voz.");
             e.printStackTrace();
         }
     }

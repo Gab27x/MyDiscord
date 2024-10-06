@@ -31,6 +31,8 @@ public class ChatClient {
                 /join [nombre_chat_grupal]                  - Unirse a un chat grupal existente
                 /msg [nombre_chat] [mensaje]                - Enviar un mensaje a un usuario o grupo
                 /audio [nombre_chat]                        - Enviar una nota de voz
+                /listen [nombre_audio]                      - Escuchar una nota de voz
+                /history [nombre_chat]                      - Ver el historial de un chat
 
                 Escribe un comando para empezar.""");
     }
@@ -75,7 +77,10 @@ public class ChatClient {
                     out.println(userInput + " " + audioFileName); // Enviar el comando al servidor
                     sendAudio(socket, targetChat, audioFileName); // Enviar el archivo al servidor
 
-                } else {
+                }else if(userInput.startsWith("/listen ")){
+                    out.println(userInput);
+                    receiveAndPlayAudio(socket);
+                }else {
                     out.println(userInput); // Enviar otros comandos
                 }
             }
@@ -136,4 +141,37 @@ public class ChatClient {
             e.printStackTrace();
         }
     }
+
+    // Recibir y reproducir el archivo de audio desde el servidor
+    private void receiveAndPlayAudio(Socket socket) {
+        try {
+            DataInputStream dis = new DataInputStream(socket.getInputStream());
+
+            // Leer la longitud del archivo de audio
+            int audioDataLength = dis.readInt();
+
+            if (audioDataLength <= 0) {
+                System.out.println("Error: El archivo de audio es inválido o está vacío.");
+                return;
+            }
+
+            byte[] audioData = new byte[audioDataLength];
+            dis.readFully(audioData);  // Asegurarse de que se leen todos los bytes
+
+            // Reproducir el audio
+            AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
+            SourceDataLine speakers = AudioSystem.getSourceDataLine(format);
+            speakers.open(format);
+            speakers.start();
+            speakers.write(audioData, 0, audioData.length);
+            speakers.drain();
+            speakers.close();
+
+            System.out.println("Audio reproducido correctamente.");
+
+        } catch (IOException | LineUnavailableException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
