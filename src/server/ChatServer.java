@@ -51,14 +51,14 @@ public class ChatServer {
     public synchronized void sendPrivateMessage(String senderUsername, String targetUsername, String message) {
         for (ClientHandler client : clients) {
             if (client.getUsername() != null && client.getUsername().equals(targetUsername)) {
-                client.sendMessage("Mensaje privado de " + senderUsername + ": " + message);
+                client.sendMessage("[" + senderUsername + "]: " + message);
                 return;
             }
         }
         // Validacipon si el usuario no está conectado
         for (ClientHandler client : clients) {
             if (client.getUsername().equals(senderUsername)) {
-                client.sendMessage("Usuario '" + targetUsername + "' no está disponible.");
+                client.sendMessage("[SERVER]: "+"Usuario '" + targetUsername + "' no está disponible.");
             }
         }
     }

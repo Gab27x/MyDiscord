@@ -18,8 +18,6 @@ public class ClientHandler implements Runnable{
     private PrintWriter out;
     private String username;  
 
-    private String currentGroup; 
-
     private DataOutputStream dataOut;  // OutputStream para enviar datos binarios como audio
 
     private CallManager callManager;
@@ -28,7 +26,6 @@ public class ClientHandler implements Runnable{
     public ClientHandler(Socket socket, ChatServer server) {
         this.clientSocket = socket;
         this.server = server;
-        this.currentGroup = null;
         this.callManager=new CallManager(); //TODO no creo que esto este bien
     }
 
@@ -66,11 +63,13 @@ public class ClientHandler implements Runnable{
                 // }
 
 
-                 else if (currentGroup != null) {
-                    String formattedMessage = "[" + currentGroup + "] " + this.username + ": " + message;
-                    server.getGroupManager().broadcastToGroup(currentGroup, formattedMessage, this);
-                } else {
-                    sendMessage("Comando no válido. Ingresa a un chat primero.");
+                //  else if (currentGroup != null) {
+                //     String formattedMessage = "[" + currentGroup + "] " + this.username + ": " + message;
+                //     server.getGroupManager().broadcastToGroup(currentGroup, formattedMessage, this);
+                // } 
+
+                else {
+                    sendMessage("Comando no válido.");
                 }
             }
         } catch (IOException e) {
@@ -89,32 +88,39 @@ public class ClientHandler implements Runnable{
 
     public void usernameCommand(String message) {
         this.username = message.split(" ", 2)[1];
-        sendMessage("Usuario registrado exitosamente con username: " + this.username);
+        sendMessage("[SERVER]: "+"Usuario registrado exitosamente con username " + this.username);
     }
 
     public void msgCommand(String message) {
         String[] splitMessage = message.split(" ", 3);
-        String targetUsername = splitMessage[1];
+        String targetChat = splitMessage[1];
         String privateMessage = splitMessage[2];
-        server.sendPrivateMessage(this.username, targetUsername, privateMessage);
+
+        boolean belongsToGroup = server.getGroupManager().getGroupMembers(targetChat).contains(this);
+
+        if (belongsToGroup) { // Si target es un grupo al que pertenece
+            sendMessage("[SERVER]: "+"Mensaje enviado al grupo '" + targetChat + "'.");
+            server.getGroupManager().broadcastToGroup(targetChat, this.username + ": " + privateMessage, this);
+        } else{ // Puede ser un usuario o un grupo al que no pertenece
+            server.sendPrivateMessage(this.username, targetChat, privateMessage);
+        }
     }
 
     public void createCommand(String message) {
         String groupName = message.split(" ", 2)[1];
         if (server.getGroupManager().createGroup(groupName)) {
-            sendMessage("Grupo '" + groupName + "' creado exitosamente.");
+            sendMessage("[SERVER]: "+"Grupo '" + groupName + "' creado exitosamente.");
         } else {
-            sendMessage("El grupo '" + groupName + "' ya existe.");
+            sendMessage("[SERVER]: "+"El grupo '" + groupName + "' ya existe.");
         }
     }
 
     public void joinCommand(String message) {
         String groupName = message.split(" ", 2)[1];
         if (server.getGroupManager().addUserToGroup(groupName, this)) {
-            currentGroup = groupName;
-            sendMessage("Te has unido al grupo '" + groupName + "'.");
+            sendMessage("[SERVER]: "+"Te has unido al grupo '" + groupName + "'.");
         } else {
-            sendMessage("El grupo '" + groupName + "' no existe.");
+            sendMessage("[SERVER]: "+"El grupo '" + groupName + "' no existe.");
         }
     }
 
@@ -125,7 +131,7 @@ public class ClientHandler implements Runnable{
 
     // Utilidades -------------------------------------------------
     public void sendMessage(String message) {
-        out.println(message);
+        out.println("\n" + message);
     }
     
     public String getUsername() {

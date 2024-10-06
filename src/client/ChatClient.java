@@ -27,16 +27,9 @@ public class ChatClient {
                 Este sistema te permite crear chats (grupales o personales), enviar mensajes de texto y notas de voz, hacer llamadas y ver el historial de conversaciones.
 
                 Comandos disponibles:
-                /create [nombre_chat]                       - Crear un nuevo chat
-                /join [nombre_chat]                         - Unirse a un chat existente
-                /enviar_mensaje_usuario [usuario] [mensaje] - Enviar un mensaje a un usuario
-                /enviar_mensaje_grupo [grupo] [mensaje]     - Enviar un mensaje a un grupo
-                /enviar_audio_usuario [usuario]             - Grabar y enviar una nota de voz a un usuario
-                /enviar_audio_grupo [grupo]                 - Grabar y enviar una nota de voz a un grupo
-                /llamar_usuario [usuario]                   - Realizar una llamada a un usuario
-                /llamar_grupo [grupo]                       - Realizar una llamada a un grupo
-                /ver_historial [grupo]                      - Ver el historial de un grupo
-                /salir                                      - Cerrar el programa
+                /create [nombre_chat_grupal]                - Crear un nuevo chat grupal
+                /join [nombre_chat_grupal]                  - Unirse a un chat grupal existente
+                /msg [nombre_chat] [mensaje]                - Enviar un mensaje a un usuario o grupo
 
                 Escribe un comando para empezar.
                 """);
@@ -61,7 +54,7 @@ public class ChatClient {
                 try {
                     String message;
                     while ((message = in.readLine()) != null) {
-                        System.out.println("\n[SERVER]: " + message + "\n");
+                        System.out.println(message);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();

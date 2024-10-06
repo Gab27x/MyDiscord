@@ -37,7 +37,7 @@ public class GroupManager {
             try {
                 // Enviar el historial del chat al cliente cuando se une
                 String history = fileManager.readChatHistory(groupName);
-                client.sendMessage("Historial del chat para '" + groupName + "':\n" + history);
+                client.sendMessage("-------- Historial del chat - '" + groupName + "'------------\n" + history);
             } catch (IOException e) {
                 client.sendMessage("Error al cargar el historial del grupo.");
             }
