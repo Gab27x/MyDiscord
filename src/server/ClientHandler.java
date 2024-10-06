@@ -95,21 +95,19 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    public void receiveAudio(String message) {
+    public void receiveAudio(String message) { // TODO: Se sigue guardando el audio asi no pertenezca al grupo
         String[] splitMessage = message.split(" ", 3);
         String targetChat = splitMessage[1];
         String audioID = "Audio_"+ Calendar.getInstance().getTimeInMillis();
         boolean belongsToGroup = server.getGroupManager().getGroupMembers(targetChat).contains(this);
 
-        String path = "data/historial/";
+        String path = "data/historial/"+targetChat+"/audio/";
 
         if (belongsToGroup) { // Si target es un grupo al que pertenece
             sendMessage("[SERVER]: Nota de voz enviada al grupo '" + targetChat + "'.");
             server.getGroupManager().broadcastToGroup(targetChat, this.username + ": "+audioID , this);
-            path += targetChat+"/"+audioID;
         } else { // Puede ser un usuario o un grupo al que no pertenece
             server.sendPrivateMessage(this.username, targetChat, audioID);
-            path += this.username+"/"+audioID;
         }
 
         // Verificar si contiene el nombre del archivo de audio
@@ -117,10 +115,6 @@ public class ClientHandler implements Runnable {
             sendMessage("[SERVER]: Debes proporcionar el nombre del chat.");
             return;
         }
-
-        String fileName = splitMessage[2];
-
-        sendMessage("[SERVER]: Recibiendo nota de voz...");
 
         try {
             // Recibir el tamaño del archivo de audio
@@ -131,12 +125,12 @@ public class ClientHandler implements Runnable {
             dataIn.readFully(audioData);
 
             // Guardar el archivo recibido en el servidor
-            File audioFile = new File("server_files/" + fileName);
+            File audioFile = new File(path + audioID + ".wav");
             try (FileOutputStream fos = new FileOutputStream(audioFile)) {
                 fos.write(audioData);
             }
 
-            sendMessage("[SERVER]: Nota de voz recibida y almacenada como " + fileName);
+            sendMessage("[SERVER]: Nota de voz recibida y almacenada como " + audioID + ".wav");
 
         } catch (IOException e) {
             sendMessage("[SERVER]: Error al recibir nota de voz.");

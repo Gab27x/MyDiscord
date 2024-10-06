@@ -37,6 +37,7 @@ public class FileManager {
         try {
             Files.createDirectories(Paths.get(groupPath));
             Files.createFile(Paths.get(groupPath + "historial de chat.txt"));
+            Files.createDirectories(Paths.get(groupPath + "audio/"));
         } catch (IOException e) {
             e.printStackTrace();
         }
