@@ -13,6 +13,34 @@ public class ChatClient {
     public static void main(String[] args) {
         new ChatClient().startClient();
     }
+    
+    public void clearScreen() {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+    }
+
+    public void printMenu() {
+        clearScreen();
+        System.out.println("""
+                Bienvenido al Sistema de Chat Cliente-Servidor
+                ----------------------------------------------
+                Este sistema te permite crear chats (grupales o personales), enviar mensajes de texto y notas de voz, hacer llamadas y ver el historial de conversaciones.
+
+                Comandos disponibles:
+                /create [nombre_chat]                       - Crear un nuevo chat
+                /join [nombre_chat]                         - Unirse a un chat existente
+                /enviar_mensaje_usuario [usuario] [mensaje] - Enviar un mensaje a un usuario
+                /enviar_mensaje_grupo [grupo] [mensaje]     - Enviar un mensaje a un grupo
+                /enviar_audio_usuario [usuario]             - Grabar y enviar una nota de voz a un usuario
+                /enviar_audio_grupo [grupo]                 - Grabar y enviar una nota de voz a un grupo
+                /llamar_usuario [usuario]                   - Realizar una llamada a un usuario
+                /llamar_grupo [grupo]                       - Realizar una llamada a un grupo
+                /ver_historial [grupo]                      - Ver el historial de un grupo
+                /salir                                      - Cerrar el programa
+
+                Escribe un comando para empezar.
+                """);
+    }
 
     public void startClient() {
         try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
@@ -20,18 +48,20 @@ public class ChatClient {
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
+            clearScreen();
             System.out.print("Ingresa tu nombre de usuario: ");
             String username = consoleInput.readLine();
-            out.println("/username " + username);  // eenvio nombre de usuario al servidor
 
-            System.out.println("Conectado al servidor de chat como " + username);
+            out.println("/username " + username);  // envio nombre de usuario al servidor
+
+            printMenu();
 
             // el hilo para leer los mensajes del servidor
             new Thread(() -> {
                 try {
                     String message;
                     while ((message = in.readLine()) != null) {
-                        System.out.println("Mensaje del servidor: " + message);
+                        System.out.println("\n[SERVER]: " + message + "\n");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();

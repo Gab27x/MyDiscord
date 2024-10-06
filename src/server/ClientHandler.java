@@ -39,34 +39,16 @@ public class ClientHandler implements Runnable{
 
             String message;
             while ((message = in.readLine()) != null) {
-                if (message.startsWith("/username ")) {
-                    this.username = message.split(" ", 2)[1];
-                    sendMessage("Tu nombre de usuario es: " + this.username);
-                } else if (message.startsWith("/msg ")) {
-                    // Enviar mensaje a un usuario específico
-                    String[] splitMessage = message.split(" ", 3);
-                    String targetUsername = splitMessage[1];
-                    String privateMessage = splitMessage[2];
-                    server.sendPrivateMessage(this.username, targetUsername, privateMessage);
-                } else if (message.startsWith("/create ")) {
-                    String groupName = message.split(" ", 2)[1];
-                    if (server.getGroupManager().createGroup(groupName)) {
-                        sendMessage("Grupo '" + groupName + "' creado exitosamente.");
-                    } else {
-                        sendMessage("El grupo '" + groupName + "' ya existe.");
-                    }
-                } else if (message.startsWith("/join ")) {
-                    String groupName = message.split(" ", 2)[1];
-                    if (server.getGroupManager().addUserToGroup(groupName, this)) {
-                        currentGroup = groupName;
-                        sendMessage("Te has unido al grupo '" + groupName + "'.");
-                    } else {
-                        sendMessage("El grupo '" + groupName + "' no existe.");
-                    }
-                } else if(message.startsWith("/call")){
-                    String groupName = message.split(" ", 2)[1];
-                    callManager.startCall(groupName, this); //TODO ALGUIEN REVISE ESTO
-                }
+
+                if (message.startsWith("/username ")) usernameCommand(message);
+
+                else if (message.startsWith("/msg ")) msgCommand(message);
+                
+                else if (message.startsWith("/create ")) createCommand(message);
+                
+                else if (message.startsWith("/join ")) joinCommand(message);
+                
+                else if(message.startsWith("/call")) callCommand(message);
                 
                 // else if (message.startsWith("/audio ")) {
                 //     // Recibir el archivo de audio
@@ -88,7 +70,7 @@ public class ClientHandler implements Runnable{
                     String formattedMessage = "[" + currentGroup + "] " + this.username + ": " + message;
                     server.getGroupManager().broadcastToGroup(currentGroup, formattedMessage, this);
                 } else {
-                    sendMessage("Debes unirte a un grupo primero.");
+                    sendMessage("Comando no válido. Ingresa a un chat primero.");
                 }
             }
         } catch (IOException e) {
@@ -103,10 +85,49 @@ public class ClientHandler implements Runnable{
         }
     }
 
+    // Comandos del cliente ----------------------------------------
+
+    public void usernameCommand(String message) {
+        this.username = message.split(" ", 2)[1];
+        sendMessage("Usuario registrado exitosamente con username: " + this.username);
+    }
+
+    public void msgCommand(String message) {
+        String[] splitMessage = message.split(" ", 3);
+        String targetUsername = splitMessage[1];
+        String privateMessage = splitMessage[2];
+        server.sendPrivateMessage(this.username, targetUsername, privateMessage);
+    }
+
+    public void createCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        if (server.getGroupManager().createGroup(groupName)) {
+            sendMessage("Grupo '" + groupName + "' creado exitosamente.");
+        } else {
+            sendMessage("El grupo '" + groupName + "' ya existe.");
+        }
+    }
+
+    public void joinCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        if (server.getGroupManager().addUserToGroup(groupName, this)) {
+            currentGroup = groupName;
+            sendMessage("Te has unido al grupo '" + groupName + "'.");
+        } else {
+            sendMessage("El grupo '" + groupName + "' no existe.");
+        }
+    }
+
+    public void callCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        notifyIncomingCall(this.username, groupName);
+    }
+
+    // Utilidades -------------------------------------------------
     public void sendMessage(String message) {
         out.println(message);
     }
-
+    
     public String getUsername() {
         return username;
     }
