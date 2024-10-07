@@ -22,4 +22,15 @@ Instrucciones de uso:
    - Verifica que el servidor esté activo y accesible en la IP y puerto especificados.
   
   ## Autores
-  
+
+| Nombre | Código de Estudiante |
+| ----------- | ----------- |
+| [Gabriel Escobar](https://github.com/Gab27x) | A00399291 |
+| [Rony Farid Ordoñez](https://github.com/Rony7v7) | A00397968 |
+| [Vanessa Sánchez](https://github.com/VaSaMo) | A00397949 |
+| [David Artunduaga Penagos](https://github.com/David104087) | A00397949 |
+
+
+## Profesor
+
+[Nicolas Javier Salazar](https://github.com/njse22)
