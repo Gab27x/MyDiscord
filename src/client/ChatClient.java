@@ -7,7 +7,7 @@ import java.nio.file.Files;
 
 public class ChatClient {
 
-    private static final String SERVER_ADDRESS = "localhost";
+    private static final String SERVER_ADDRESS = "192.168.1.29";
     private static final int SERVER_PORT = 12345;
 
     public static void main(String[] args) {
