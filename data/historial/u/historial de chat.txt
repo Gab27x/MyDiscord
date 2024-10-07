@@ -1,0 +1,3 @@
+[u] user2: hola
+[u] user1: hola c�mo tas?
+user2: soy gabriel 

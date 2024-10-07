@@ -2,40 +2,74 @@ package server;
 
 import java.io.*;
 import java.nio.file.*;
-import java.util.List;
 
 public class FileManager {
-    
-    // Lee el historial de chat de un archivo y devuelve su contenido
-    public String readChatHistory(String filePath) throws IOException {
-        return new String(Files.readAllBytes(Paths.get(filePath)));
+
+    private static FileManager instance = null;
+
+    private final String dataDirectory = "data/";
+    private final String gruposDirectory = dataDirectory + "grupos/";
+    private final String historialDirectory = dataDirectory + "historial/";
+
+    private FileManager() {
+        createDirectories();
+    }
+
+    public static FileManager getInstance() {
+        if (instance == null) {
+            instance = new FileManager();
+        }
+        return instance;
+    }
+
+    private void createDirectories() {
+        try {
+            Files.createDirectories(Paths.get(gruposDirectory));
+            Files.createDirectories(Paths.get(historialDirectory));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // estructura para cada grupo nuevo
+    public void createGroupDirectories(String groupName) {
+        String groupPath = historialDirectory + groupName + "/";
+        try {
+            Files.createDirectories(Paths.get(groupPath));
+            Files.createFile(Paths.get(groupPath + "historial de chat.txt"));
+            Files.createDirectories(Paths.get(groupPath + "audio/"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Escribe un nuevo mensaje en el historial de chat
-    public void writeChatMessage(String filePath, String message) throws IOException {
+    public void writeChatMessage(String groupName, String message) throws IOException {
+        String filePath = historialDirectory + groupName + "/historial de chat.txt";
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
             writer.write(message + "\n");
         }
     }
 
-    // Guarda un archivo de audio en la carpeta correspondiente
-    public void saveAudioFile(String filePath, byte[] audioData) throws IOException {
-        Files.write(Paths.get(filePath), audioData);
-    }
-
-    // Lee un archivo JSON (por ejemplo, grupos.json) y lo convierte en una cadena
-    public String readJsonFile(String filePath) throws IOException {
+    // Lee el historial de chat de un grupo
+    public String readChatHistory(String groupName) throws IOException {
+        String filePath = historialDirectory + groupName + "/historial de chat.txt";
         return new String(Files.readAllBytes(Paths.get(filePath)));
     }
 
-    // Escribe datos JSON en un archivo
-    public void writeJsonFile(String filePath, String jsonData) throws IOException {
-        Files.write(Paths.get(filePath), jsonData.getBytes());
+    public void saveAudioFile(String groupName, String audioFileName, byte[] audioData) throws IOException {
+        String audioDirectory = historialDirectory + groupName + "/audio/";
+        Files.createDirectories(Paths.get(audioDirectory));  // Crear la carpeta audio/
+        String filePath = audioDirectory + audioFileName;
+        Files.write(Paths.get(filePath), audioData);
     }
-    
-    // Sincronización para evitar conflictos en operaciones de escritura
-    public synchronized void synchronizedWriteChatMessage(String filePath, String message) throws IOException {
-        writeChatMessage(filePath, message);
+
+
+
+    // Leer un archivo de audio (para enviar a un cliente)
+    public byte[] readAudioFile(String groupName, String audioFileName) throws IOException {
+        String filePath = historialDirectory + groupName + "/audio/" + audioFileName;
+        return Files.readAllBytes(Paths.get(filePath));
     }
 
 }

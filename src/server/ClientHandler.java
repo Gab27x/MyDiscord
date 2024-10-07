@@ -1,67 +1,295 @@
-package org.example.mydiscord.model;
+package server;
 
-import javax.sound.sampled.*;
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.util.Set;
+import java.util.Calendar;
 import java.net.Socket;
+import java.nio.file.Files;
+
+import java.util.Arrays;
+import javax.sound.sampled.*;
 
 public class ClientHandler implements Runnable {
 
-    private Socket socket;
+    private Socket clientSocket;
+    private ChatServer server;
+    private PrintWriter out;
+    private String username;
 
-    public ClientHandler(Socket socket) {
-        this.socket = socket;
+    private DataInputStream dataIn; // InputStream para recibir datos binarios como audio
+    private DataOutputStream dataOut; // OutputStream para enviar datos binarios como audio
+
+    private CallManager callManager;
+
+    public ClientHandler(Socket socket, ChatServer server) {
+        this.clientSocket = socket;
+        this.server = server;
+        this.callManager = new CallManager();
     }
 
     @Override
     public void run() {
-        try{
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+            this.out = new PrintWriter(clientSocket.getOutputStream(), true);
+            this.dataIn = new DataInputStream(clientSocket.getInputStream()); // Para recibir los datos binarios
 
-            System.out.println("Definir el formato de audio");
-            AudioFormat format = new AudioFormat(44100, 16,
-                    1, true, true);
+            String message;
+            while ((message = in.readLine()) != null) {
 
-            System.out.println("Información del parlante");
-            DataLine.Info infoSpeaker = new DataLine.Info(SourceDataLine.class, format);
+                if (message.startsWith("/username "))
+                    usernameCommand(message);
 
-            System.out.println("Conexión con el parlante");
-            SourceDataLine speaker = (SourceDataLine) AudioSystem.getLine(infoSpeaker);
+                else if (message.startsWith("/msg "))
+                    msgCommand(message);
 
-            System.out.println("Abren el parlante del equipo");
-            speaker.open(format);
-            speaker.start();
+                else if (message.startsWith("/audio ")) {
+                    receiveAudio(message);
+                }
 
-            System.out.println("Conexion con el socket para extraer la información que envia el cliente");
-            InputStream io = socket.getInputStream();
-            BufferedInputStream bis = new BufferedInputStream(io);
+                else if (message.startsWith("/listen "))
+                    listenCommand(message);
 
-            System.out.println("Decodificando la información y enviando al parlante");
-            byte[] buffer = new byte[1024];
+                else if (message.startsWith("/create "))
+                    createCommand(message);
 
-            while (true){
+                else if (message.startsWith("/join "))
+                    joinCommand(message);
 
-                int byteRead = bis.read(buffer, 0, buffer.length);
+                else if (message.startsWith("/call"))
+                    callCommand(message);
 
-                //Thread.sleep(10);
+                else if (message.startsWith("/endcall "))
+                    endCallCommand(message);
 
-                speaker.write(buffer, 0, byteRead);
-                if(byteRead == -1){
-                    break;
+                else if (message.startsWith("/history "))
+                    historyCommand(message);
+
+                else {
+                    sendMessage("Comando no válido.");
                 }
             }
-            speaker.drain();
-            speaker.flush();
-            speaker.close();
-
-
-        }catch (LineUnavailableException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+        } finally {
+            server.removeClient(this);
+            try {
+                clientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        //catch (InterruptedException e) {
-        //    throw new RuntimeException(e);
-        //}
+    }
+
+    // Comandos del cliente ----------------------------------------
+
+    public void usernameCommand(String message) {
+        this.username = message.split(" ", 2)[1];
+        sendMessage("[SERVER]: Usuario registrado exitosamente con username " + this.username);
+    }
+
+    public void msgCommand(String message) {
+        String[] splitMessage = message.split(" ", 3);
+        String targetChat = splitMessage[1];
+        String privateMessage = splitMessage[2];
+
+        boolean belongsToGroup = server.getGroupManager().getGroupMembers(targetChat).contains(this);
+
+        if (belongsToGroup) { // Si target es un grupo al que pertenece
+            sendMessage("[SERVER]: Mensaje enviado al grupo '" + targetChat + "'.");
+            server.getGroupManager().broadcastToGroup(targetChat, this.username + ": " + privateMessage, this);
+        } else { // Puede ser un usuario o un grupo al que no pertenece
+            server.sendPrivateMessage(this.username, targetChat, privateMessage);
+        }
+    }
+
+    public void receiveAudio(String message) { // TODO: Se sigue guardando el audio asi no pertenezca al grupo
+        String[] splitMessage = message.split(" ", 3);
+        String targetChat = splitMessage[1];
+        String audioID = "Audio" + Calendar.getInstance().getTimeInMillis() + "_" + targetChat;
+        boolean belongsToGroup = server.getGroupManager().getGroupMembers(targetChat).contains(this);
+
+        String path = "data/historial/" + targetChat + "/audio/";
+
+        if (belongsToGroup) { // Si target es un grupo al que pertenece
+            sendMessage("[SERVER]: Nota de voz enviada al grupo '" + targetChat + "'.");
+            server.getGroupManager().broadcastToGroup(targetChat, this.username + ": " + audioID, this);
+        } else { // Puede ser un usuario o un grupo al que no pertenece
+            server.sendPrivateMessage(this.username, targetChat, audioID);
+        }
+
+        // Verificar si contiene el nombre del archivo de audio
+        if (splitMessage.length < 3) {
+            sendMessage("[SERVER]: Debes proporcionar el nombre del chat.");
+            return;
+        }
+
+        try {
+            // Recibir el tamaño del archivo de audio
+            int fileSize = dataIn.readInt();
+            byte[] audioData = new byte[fileSize];
+
+            // Leer los datos binarios del archivo de audio
+            dataIn.readFully(audioData);
+
+            // Guardar el archivo recibido en el servidor
+            File audioFile = new File(path + audioID + ".wav");
+            try (FileOutputStream fos = new FileOutputStream(audioFile)) {
+                fos.write(audioData);
+            }
+
+            sendMessage("[SERVER]: Nota de voz recibida y almacenada como " + audioID + ".wav");
+
+        } catch (IOException e) {
+            sendMessage("[SERVER]: Error al recibir nota de voz.");
+            e.printStackTrace();
+        }
+    }
+
+    public void listenCommand(String message) {
+        String[] splitMessage = message.split(" ", 2);
+        String audioID = splitMessage[1];
+        String path = "data/historial/" + audioID.split("_")[1] + "/audio/" + audioID + ".wav";
+
+        // Verificar si tiene acceso al chat
+        if (!server.getGroupManager().getGroupMembers(audioID.split("_")[1]).contains(this)) {
+            sendMessage("[SERVER]: No tienes acceso a este chat.");
+            return;
+        }
+
+        File audioFile = new File(path);
+
+        if (!audioFile.exists()) {
+            sendMessage("[SERVER]: El archivo de audio no existe.");
+            return;
+        }
+
+        try {
+            byte[] audioData = Files.readAllBytes(audioFile.toPath());
+            sendAudioData(audioData); // Enviar los datos de audio al cliente
+            sendMessage("[SERVER]: Nota de voz enviada correctamente.");
+        } catch (IOException e) {
+            sendMessage("[SERVER]: Error al enviar la nota de voz.");
+            e.printStackTrace();
+        }
+    }
+
+    public void createCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        if (server.getGroupManager().createGroup(groupName)) {
+            sendMessage("[SERVER]: Grupo '" + groupName + "' creado exitosamente.");
+            // Unirse automáticamente al grupo recién creado
+            joinCommand("/join " + groupName);
+
+        } else {
+            sendMessage("[SERVER]: El grupo '" + groupName + "' ya existe.");
+        }
+    }
+
+    public void joinCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        if (server.getGroupManager().addUserToGroup(groupName, this)) {
+            sendMessage("[SERVER]: Te has unido al grupo '" + groupName + "'.");
+        } else {
+            sendMessage("[SERVER]: El grupo '" + groupName + "' no existe.");
+        }
+    }
+
+    public void callCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        
+        callManager.startCall(groupName, this);        
+        startSendingAudio(groupName);
+    }
+
+    public void endCallCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+        callManager.endCall(groupName, this);
+    }
+
+    public void historyCommand(String message) {
+        String groupName = message.split(" ", 2)[1];
+
+        // Verificar si tiene acceso al chat
+        if (!server.getGroupManager().getGroupMembers(groupName).contains(this)) {
+            sendMessage("[SERVER]: No tienes acceso a este chat.");
+            return;
+        }
+
+        String history = server.getGroupManager().getChatHistory(groupName);
+        sendMessage("-------- Historial del chat - '" + groupName + "'------------\n" + history);
+    }
+
+    // Utilidades -------------------------------------------------
+
+    public void sendMessage(String message) {
+        out.println("\n" + message);
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    // Método para manejar el envío continuo de audio
+    public void startSendingAudio(String groupName) {
+        // Crea un nuevo hilo para enviar los datos de audio en tiempo real
+        new Thread(() -> {
+            try {
+                AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+                TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+                microphone.open(format);
+                microphone.start();
+
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+
+                // Mientras el usuario esté en la llamada
+                while (callManager.isInCall(groupName, this)) {
+                    // Leer el audio desde el micrófono
+                    bytesRead = microphone.read(buffer, 0, buffer.length);
+
+                    // Enviar los datos de audio al CallManager
+                    if (bytesRead > 0) {
+                        callManager.handleCallData(groupName, Arrays.copyOf(buffer, bytesRead), this);
+                    }
+                }
+
+                microphone.stop();
+                microphone.close();
+            } catch (LineUnavailableException e) {
+                sendMessage("[SERVER]: Error en la transmisión de audio.");
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    // Método para notificar a los participantes sobre una llamada entrante
+    public void notifyIncomingCall(String initiator, String groupName) {
+        Set<ClientHandler> participants = server.getGroupManager().getGroupMembers(groupName);
+
+        for (ClientHandler participant : participants) {
+            if (!participant.getUsername().equals(initiator)) {
+                participant.sendMessage("Llamada entrante de " + initiator + " en el grupo '" + groupName + "'.");
+            }
+        }
+    }
+
+    public void sendAudioData(byte[] audioData) {
+        try {
+            if (audioData.length == 0) {
+                sendMessage("[SERVER]: El archivo de audio está vacío.");
+                return;
+            }
+
+            // Enviar la longitud del archivo de audio
+            dataOut.writeInt(audioData.length);
+            // Enviar los datos de audio
+            dataOut.write(audioData);
+            dataOut.flush(); // Asegurarse de que los datos se envían de inmediato
+
+        } catch (IOException e) {
+            sendMessage("[SERVER]: Error al enviar la nota de voz.");
+            e.printStackTrace();
+        }
     }
 }
